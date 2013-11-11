@@ -12,7 +12,8 @@ try:
 except ImportError:
     log.debug("module_wolfram_alpha requires lxml.etree for xpath support")
 
-appid = None
+global appid
+appid = "A97XYW-JTGV2VG395"
 query = "http://api.wolframalpha.com/v2/query?input=%s&appid=%s"
 
 
