@@ -92,9 +92,11 @@ def get_exempt_status(user):
   if isAdmin(user):
     return True
   else:
-    if not "users.quakenet.org" in user:
+    exceptions = ['users.quakenet.org', 'arkku.net', '.fi']
+    if not any(x in user for x in exceptions):
+      host = user.split('@')[1]
       conn, c = open_DB()
-      c.execute("SELECT hostmask FROM exceptions WHERE hostmask = '" + user + "' ")
+      c.execute("SELECT hostmask FROM exceptions WHERE hostmask LIKE ('%" + host + "%') ")
       if c.fetchone():
         retval = True
       else:
@@ -102,22 +104,35 @@ def get_exempt_status(user):
       conn.close()
       return retval
     else:
-      return True
+      blacklist = ['elisa-mobile.fi', 'nat-elisa-mobile.fi']
+      if any(x in user for x in blacklist):
+        return false
+      else:
+         return True
 
 
 def handle_userJoined(bot, user, channel):
-  host = user.split('@')[1]
-  try:
-    country = gi4.country_name_by_name(host)
-  except socket.gaierror:
-    country = None
-      
-  if country != "Finland":
-    if not get_exempt_status(user):
+  # if tested user is in exception list
+  if not get_exempt_status(user):
+    host = user.split('@')[1]
+
+    # attempt to get location data from the geoip database
+    try:
+      country = gi4.country_name_by_name(host)
+    except socket.gaierror:
+      country = None
+
+    # if country information was found & if it wasn't Finland
+    if country != "Finland" and country != "":
+      # grab nickname and hostname of the user
+      nick = getNick(user)
       banmask = "*!*@" + host
       banmask = banmask.encode('utf-8')
-      nick = getNick(user)      
+
+      # ban & kick
       bot.mode(channel, True, 'b', mask=banmask)
-      bot.kick(channel, nick, "Hosted from a banned country (" + country + "). If you think you should have access, message the admins for an exempt.")   
+      bot.kick(channel, nick, "Hosted from a banned country (" + country + ") or host (" + host + "). If you think you should have access, message the admins for an exempt.")
+
+      # unban after 300s to avoid filling the banlist
       time.sleep(300)
       bot.mode(channel, False, 'b', mask=banmask)
