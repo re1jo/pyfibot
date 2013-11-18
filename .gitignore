@@ -1,6 +1,5 @@
 # configs, databases and virtualenv artifacts
 config.yml
-.travis.yml
 include/
 man/
 module_autoop.db
