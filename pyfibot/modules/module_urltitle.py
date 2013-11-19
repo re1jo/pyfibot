@@ -111,11 +111,11 @@ def command_cache(bot, user, channel, args):
     if isAdmin(user):
         CACHE_ENABLED = not CACHE_ENABLED
         # cache was just disabled, clear it
-        if CACHE_ENABLED == False:
+        if not CACHE_ENABLED:
             cache.clear()
             bot.say(channel, 'Cache cleared')
-        msg = 'Cache status: %s'
-        bot.say(channel, msg%'ENABLED' if CACHE_ENABLED else msg%'DISABLED')
+        msg = 'Cache status: %s' % ('ENABLED' if CACHE_ENABLED else 'DISABLED')
+        bot.say(channel, msg)
 
 
 def handle_url(bot, user, channel, url, msg):
@@ -606,8 +606,9 @@ def _handle_areena(url):
             content_type = 'EPISODE'
 
     try:
-        if content_type in ['EPISODE', 'CLIP']:
-            name = data['reportingTitle']
+        if content_type in ['EPISODE', 'CLIP', 'PROGRAM']:
+            # sometimes there's a ": " in front of the name for some reason...
+            name = data['reportingTitle'].lstrip(': ')
             duration = __get_length_str(data['durationSec'])
             broadcasted = __get_age_str(datetime.strptime(data['published'], '%Y-%m-%dT%H:%M:%S'))
             if data['expires']:
