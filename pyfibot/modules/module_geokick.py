@@ -5,6 +5,7 @@ import os.path
 import socket
 import sqlite3
 import time
+import re
 
 DATAFILE = os.path.join(sys.path[0], "GeoIP.dat")
 # STANDARD = reload from disk
@@ -39,7 +40,7 @@ def command_geo_exempt(bot, user, channel, args):
       return True
     else:
       return bot.say(channel, "Virhe: Poikkeus on jo listalla!")
-
+      
 
 def command_geo_list(bot, user, channel, args):
   if get_op_status(user):
@@ -48,8 +49,7 @@ def command_geo_list(bot, user, channel, args):
     rows = c.fetchall()
     conn.close()
     if rows:
-      excepts = str("")
-      j   = 0
+      excepts = str("")      
       for i in rows:
         excepts += "[" + i[0] + "] "
       return bot.say(channel, "Poikkeukset: " + excepts)
@@ -87,29 +87,53 @@ def get_op_status(user):
     conn.close()
     return retval
 
+# try to split user string as dictionary with nick, ident and hostname
+def get_data(user):
+  try:
+    temp = user.split('@')[0]
+    data = {'nick':getNick(user), 'ident':temp.split('!')[1], 'host':user.split('@')[1]  }  	
+    return data
+  except:
+    return False
 
-def get_exempt_status(user):
+#@todo blacklist = ['elisa-mobile.fi', 'nat-elisa-mobile.fi']   
+def get_exempt_status(user):  
   if isAdmin(user):
     return True
   else:
-    exceptions = ['users.quakenet.org', 'arkku.net', '.fi']
-    if not any(x in user for x in exceptions):
-      host = user.split('@')[1]
-      conn, c = open_DB()
-      c.execute("SELECT hostmask FROM exceptions WHERE hostmask LIKE ('%" + host + "%') ")
-      if c.fetchone():
-        retval = True
-      else:
-        retval = False
-      conn.close()
-      return retval
-    else:
-      blacklist = ['elisa-mobile.fi', 'nat-elisa-mobile.fi']
-      if any(x in user for x in blacklist):
-        return false
-      else:
-         return True
+    data = get_data(user)
 
+    if data:    
+      conn, c = open_DB()
+      c.execute('SELECT hostmask FROM exceptions;')
+      rows = c.fetchall()
+      conn.close()    
+      
+      # iterate all hostmasks             
+      for i in rows:           
+        row = get_data(i[0])  
+        j = 0                  
+
+        # check current row data against that of the user data
+        for row_value in row.values():                                                         
+          for data_value in data.values():                  
+            # if a wildcard or exact match            
+            if row_value == "*" or ( row_value in data_value and "*" not in row_value ):                            
+              j += 1
+              break
+            # if contains a wildcard, we have to regex
+            elif "*" in row_value:                 
+              regex = re.escape(row_value)
+              regex = row_value.replace("*",".*")              
+              if re.search(regex, data_value):                
+                j += 1
+                break
+          
+          # if counter reaches three, user matches exception list
+          if j == 3:                                   
+            return True  
+    return False  
+    
 
 def handle_userJoined(bot, user, channel):
   # if tested user is in exception list
