@@ -28,7 +28,7 @@ def open_DB(createTable=False, db="module_geokick.db"):
 
 
 def command_geo_exempt(bot, user, channel, args):
-  """.geo_add nick!ident@hostname"""
+  """.geo_exempt nick!ident@hostname | Supports wildcards, for example *!*@*site.com (! and @ are required)"""
   if get_op_status(user):
     if not get_exempt_status(args):
       conn, c = open_DB()
@@ -36,11 +36,11 @@ def command_geo_exempt(bot, user, channel, args):
       c.execute(insert)
       conn.commit()
       conn.close()
-      bot.say(channel, "Poikkeus lisätty.")
+      bot.say(channel, "Success: " + args.encode('utf-8') + " added to exempt list.")
       return True
     else:
-      return bot.say(channel, "Virhe: Poikkeus on jo listalla!")
-      
+      return bot.say(channel, "Error: exempt exists already!")
+
 
 def command_geo_list(bot, user, channel, args):
   if get_op_status(user):
@@ -49,28 +49,27 @@ def command_geo_list(bot, user, channel, args):
     rows = c.fetchall()
     conn.close()
     if rows:
-      excepts = str("")      
+      excepts = str("")
       for i in rows:
         excepts += "[" + i[0] + "] "
-      return bot.say(channel, "Poikkeukset: " + excepts)
+      return bot.say(channel, "Exceptions: " + excepts)
     else:
-      return bot.say(channel, "Poikkeuslista on tyhjä.")
+      return bot.say(channel, "Error: no exceptions added. See .help geo_exempt")
 
 
 def command_geo_remove(bot, user, channel, args):
-  """.geo_remove nick!ident@hostname"""
+  """.geo_remove hostname"""
   if get_op_status(user):
-    if get_exempt_status(args):
+    conn, c = open_DB()
+    c.execute("SELECT hostmask FROM exceptions WHERE hostmask = '" + args + "'")
+    if c.fetchone():
       conn, c = open_DB()
-      c.execute("DELETE FROM exceptions WHERE hostmask = '" + args + "';")
+      c.execute("DELETE FROM exceptions WHERE hostmask = '" + args + "'")
       conn.commit()
       conn.close()
-      bot.say(channel, "Poikkeus poistettu.")
-      command_geo_list(bot, user, channel, args)
-      return True
+      bot.say(channel, "Success: exception removed.")
     else:
-      command_geo_list(bot, user, channel, args)
-      bot.say(channel, "Virhe: hostmaskia ei löytynyt")
+      bot.say(channel, "Error: hostmask not found.")
 
 
 def get_op_status(user):
@@ -87,53 +86,55 @@ def get_op_status(user):
     conn.close()
     return retval
 
+
 # try to split user string as dictionary with nick, ident and hostname
 def get_data(user):
   try:
     temp = user.split('@')[0]
-    data = {'nick':getNick(user), 'ident':temp.split('!')[1], 'host':user.split('@')[1]  }  	
+    data = {'nick':getNick(user), 'ident':temp.split('!')[1], 'host':user.split('@')[1]  }
     return data
   except:
     return False
 
-#@todo blacklist = ['elisa-mobile.fi', 'nat-elisa-mobile.fi']   
-def get_exempt_status(user):  
+
+#@todo blacklist = ['elisa-mobile.fi', 'nat-elisa-mobile.fi']
+def get_exempt_status(user):
   if isAdmin(user):
     return True
   else:
     data = get_data(user)
 
-    if data:    
+    if data:
       conn, c = open_DB()
       c.execute('SELECT hostmask FROM exceptions;')
       rows = c.fetchall()
-      conn.close()    
-      
-      # iterate all hostmasks             
-      for i in rows:           
-        row = get_data(i[0])  
-        j = 0                  
+      conn.close()
+
+      # iterate all hostmasks
+      for i in rows:
+        row = get_data(i[0])
+        j = 0
 
         # check current row data against that of the user data
-        for row_value in row.values():                                                         
-          for data_value in data.values():                  
-            # if a wildcard or exact match            
-            if row_value == "*" or ( row_value in data_value and "*" not in row_value ):                            
+        for row_value in row.values():
+          for data_value in data.values():
+            # if a wildcard or exact match
+            if row_value == "*" or ( row_value in data_value and "*" not in row_value ):
               j += 1
               break
             # if contains a wildcard, we have to regex
-            elif "*" in row_value:                 
+            elif "*" in row_value:
               regex = re.escape(row_value)
-              regex = row_value.replace("*",".*")              
-              if re.search(regex, data_value):                
+              regex = row_value.replace("*",".*")
+              if re.search(regex, data_value):
                 j += 1
                 break
-          
+
           # if counter reaches three, user matches exception list
-          if j == 3:                                   
-            return True  
-    return False  
-    
+          if j == 3:
+            return True
+  return False
+
 
 def handle_userJoined(bot, user, channel):
   # if tested user is in exception list
@@ -155,8 +156,14 @@ def handle_userJoined(bot, user, channel):
 
       # ban & kick
       bot.mode(channel, True, 'b', mask=banmask)
-      bot.kick(channel, nick, "Hosted from a banned country (" + country + ") or host (" + host + "). If you think you should have access, message the admins for an exempt.")
+      bot.kick(channel, nick, "Hosted from a banned country (" + country + ") or host (" + host + "). If you think you should have access, /msg lolfi .request_exempt")
 
       # unban after 300s to avoid filling the banlist
       time.sleep(300)
       bot.mode(channel, False, 'b', mask=banmask)
+
+
+def command_request_exempt(bot, user, channel, args):
+  if channel != "#projekti_lol":
+    nick = getNick(user)
+    bot.say("#projekti_lol".encode('utf-8'), "Notification: " + nick + " (" + user + ") requested and exempt.")

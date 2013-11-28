@@ -31,7 +31,7 @@ def command_admin_add(bot, user, channel, args):
       bot.say(channel, "Admin lisätty.")
       return True
     else:
-      return bot.say(channel, "Virhe: Admin on jo listalla!")
+      return bot.say(channel, "Error: admin already on list!")
 
 
 def command_admin_list(bot, user, channel, args):
@@ -45,25 +45,25 @@ def command_admin_list(bot, user, channel, args):
       j   = 0
       for i in rows:
         ops += "[" + i[0] + "] "
-      return bot.say(channel, "Adminlista: " + ops)
+      return bot.say(channel, "Admins: " + ops)
     else:
-      return bot.say(channel, "Adminlista on tyhjä.")
+      return bot.say(channel, "Error: admin list is empty.")
 
 
 def command_admin_remove(bot, user, channel, args):
-  """.admin_remove nick!ident@hostname"""
+  """.geo_remove hostname"""
   if get_op_status(user):
     if get_op_status(args):
       conn, c = open_DB()
-      c.execute("DELETE FROM ops WHERE hostmask = '" + args + "';")
-      conn.commit()
-      conn.close()
-      bot.say(channel, "Admin poistettu.")
-      command_admin_list(bot, user, channel, args)
-      return True
-    else:
-      command_admin_list(bot, user, channel, args)
-      bot.say(channel, "Virhe: hostmaskia ei löytynyt")
+      c.execute("SELECT hostmask FROM ops WHERE hostmask = '" + args + "'")
+      if c.fetchone():
+        conn, c = open_DB()
+        c.execute("DELETE FROM ops WHERE hostmask = '" + args + "'")
+        conn.commit()
+        conn.close()
+        bot.say(channel, "Success: admin removed.")
+      else:
+        bot.say(channel, "Error: hostmask not found. See .help admin_add")
 
 
 def get_op_status(user):
@@ -81,22 +81,18 @@ def get_op_status(user):
 
 
 def command_tempban(bot, user, channel, args):
-  """.tempban #channel nick!ident@hostname 10minutes/1days/2weeks/1month syy"""
+  """.tempban #channel nick!ident@hostname 10minutes/1days/2weeks/1month reason"""
   if get_op_status(user):
     bot.say("Q!TheQBot@CServe.quakenet.org".encode('utf-8'), "tempban " + args)
     if channel != "#projekti_lol":
       nick = getNick(user)
-      bot.say("#projekti_lol".encode('utf-8'), nick + " ajoi komennon: tempban " + args)
+      bot.say("#projekti_lol".encode('utf-8'), "Notification: " + nick + " executed command: tempban " + args)
 
 
 def command_unban(bot, user, channel, args):
   """.unban #channel nick!identi@hostname"""
-  if get_op_status(user):    
+  if get_op_status(user):
     bot.say("Q!TheQBot@CServe.quakenet.org".encode('utf-8'), "unban " + args)
     if channel != "#projekti_lol":
-      nick = getNick(user)    
-      bot.say("#projekti_lol".encode('utf-8'), nick + " ajoi komennon: unban " + args)
-
-#todo
-#def command_listbans(bot, user, channel, args):
-  #if get_op_status(user):
+      nick = getNick(user)
+      bot.say("#projekti_lol".encode('utf-8'), "Notification: " + nick + " executed command: unban " + args)
