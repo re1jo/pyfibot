@@ -31,13 +31,16 @@ def command_geo_exempt(bot, user, channel, args):
   """.geo_exempt nick!ident@hostname | Supports wildcards, for example *!*@*site.com (! and @ are required)"""
   if get_op_status(user):
     if not get_exempt_status(args):
-      conn, c = open_DB()
-      insert = "INSERT INTO exceptions VALUES ('" + args + "');"
-      c.execute(insert)
-      conn.commit()
-      conn.close()
-      bot.say(channel, "Success: " + args.encode('utf-8') + " added to exempt list.")
-      return True
+      if len(args) < 4:
+        conn, c = open_DB()
+        insert = "INSERT INTO exceptions VALUES ('" + args + "');"
+        c.execute(insert)
+        conn.commit()
+        conn.close()
+        bot.say(channel, "Success: " + args.encode('utf-8') + " added to exempt list.")
+        return True
+      else:
+        return bot.say(channel, "Error: too short!")  
     else:
       return bot.say(channel, "Error: exempt exists already!")
 
