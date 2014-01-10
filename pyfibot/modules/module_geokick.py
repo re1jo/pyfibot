@@ -40,7 +40,7 @@ def command_geo_exempt(bot, user, channel, args):
         bot.say(channel, "Success: " + args.encode('utf-8') + " added to exempt list.")
         return True
       else:
-        return bot.say(channel, "Error: too short!")  
+        return bot.say(channel, "Error: invalid exempt. See .help geo_exempt")  
     else:
       return bot.say(channel, "Error: exempt exists already!")
 
@@ -72,7 +72,7 @@ def command_geo_remove(bot, user, channel, args):
       conn.close()
       bot.say(channel, "Success: exception removed.")
     else:
-      bot.say(channel, "Error: hostmask not found.")
+      bot.say(channel, "Error: hostmask not found. Check .geo_list for broader exempts that would override what you are trying to add.")
 
 
 def get_op_status(user):
